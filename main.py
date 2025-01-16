@@ -93,15 +93,15 @@ async def webhook(
             if action_function:
                 result = await action_function(**function_params, db_session=db_session, session_id=session_id)
                 await service.update_history(session_id, db_session, bot_message=result)
-                return {"fulfillmentText": result}  # Dialogflow CX response format
+                return await service.generate_dialogflow_response({}, result)  # Dialogflow CX response format
             else:
                 raise ValueError(f"Unknown function: {function_name}")
         else:
             await service.update_history(session_id, db_session, bot_message=model_response)
-            return {"fulfillmentText": model_response}  # Dialogflow CX response format
+            return await service.generate_dialogflow_response({}, model_response)
     except Exception as e:
         logging.error(f"Error processing webhook: {e}")
-        return {"fulfillmentText": "An error occurred. Please try again later."}
+        return await service.generate_dialogflow_response({}, f"An error occurred. Please try again later.")
     
 app.include_router(barbers_router, prefix="/api")
 app.include_router(router, prefix="/api")

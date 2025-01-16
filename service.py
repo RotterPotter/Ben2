@@ -303,4 +303,20 @@ class Service:
 
     return appointments_to_return
 
+  async def generate_dialogflow_response(self, parameters: dict, fullfilment_message: str) -> dict:
+        response = {
+            "sessionInfo": {
+                "parameters": parameters
+            },
+            "fulfillmentResponse": {
+                "messages": [
+                    {
+                        "text": {
+                            "text": [fullfilment_message]
+                        }
+                    }
+                ]
+            }
+        }
+        return response
       
