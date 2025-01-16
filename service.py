@@ -63,7 +63,10 @@ class Service:
             query = query.filter(Appointment.barber == barber)
         else:
             # If the barber doesn't exist, return an empty list
-            return json.dumps([], indent=4)
+            conversation_history = await self.take_converation_history_for_session_id(session_id, db_session)
+            history_dict_list = [message.to_dict() for message in conversation_history[-5:]]  # Last 5 messages
+            history_json = json.dumps(history_dict_list, indent=4)
+            return self.ai_helper_request("check_for_availability", "False, Barber does not exist", db_session=db_session, history_json=history_json)
 
     # Filter by date range if provided
     if date_range:
