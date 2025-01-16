@@ -2,7 +2,7 @@ import uvicorn
 import fastapi
 from fastapi.middleware.cors import CORSMiddleware
 from barbers.routes import router as barbers_router
-from fastapi import Request, Depends
+from fastapi import Request, Depends, APIRouter
 import database
 from sqlalchemy.orm import Session
 from service import Service
@@ -13,10 +13,12 @@ import datetime
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+router = APIRouter()
 
 app = fastapi.FastAPI()
-app.include_router(barbers_router)
+
 service = Service()
+
 
 # Add CORS middleware
 app.add_middleware(
@@ -26,13 +28,13 @@ app.add_middleware(
     allow_methods=["*"],  # Allow all methods (GET, POST, etc.)
     allow_headers=["*"],  # Allow all headers
 )
-@app.get("/get_appointments_testing")
+@router.get("/get_appointments_testing")
 async def get_appointments_testing(
     db_session: Session = Depends(database.get_db)
 ):
     return service.get_appointments_from_database("2022-01-01", "2022-01-31", db_session=db_session)
 
-@app.post("/schedule_appointment")
+@router.post("/schedule_appointment")
 async def schedule_appointment(
     db_session: Session = Depends(database.get_db),
     date: str = None,
@@ -45,8 +47,16 @@ async def schedule_appointment(
         return {"message": "Appointment scheduled successfully"}
     else:
        return response 
-    
-@app.post("/webhook")
+
+@router.get("/appointments/")
+async def get_appointments(
+    date: datetime.datetime = None,
+    db_session: Session = Depends(database.get_db)
+):
+    return await service.get_appointments_for_front(date=date, db_session=db_session)
+
+
+@router.post("/webhook")
 async def webhook(
     request: Request,
     db_session: Session = Depends(database.get_db)
@@ -92,9 +102,9 @@ async def webhook(
     except Exception as e:
         logging.error(f"Error processing webhook: {e}")
         return {"fulfillmentText": "An error occurred. Please try again later."}
-
     
-
+app.include_router(barbers_router, prefix="/api")
+app.include_router(router, prefix="/api")
 
 if __name__ == '__main__':
     uvicorn.run('main:app', host='0.0.0.0', port=8000, reload=True)

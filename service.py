@@ -9,6 +9,7 @@ import prompts
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 from sqlalchemy import func, cast, Date, Time
+from schemas import AppointmentReturn
 
 
 class Service:
@@ -117,7 +118,7 @@ class Service:
   async def continue_conversation(self, db_session: Session, session_id: str):
       return True
   
-  async def get_appointments_from_database(self, date_start: str, date_end: str, db_session: Session, session_id: str):
+  async def get_appointments_from_database(self, date_start: str, date_end: str, db_session: Session, session_id: str = None):
       date_start = datetime.datetime.strptime(date_start, "%Y-%m-%d")
       date_end = datetime.datetime.strptime(date_end, "%Y-%m-%d")
       appointments = db_session.query(Appointment).filter(Appointment.datetime >= date_start, Appointment.datetime <= date_end).all()
@@ -274,5 +275,32 @@ class Service:
      prompt = prompts.ai_helper_prompt + "\n" + input_data
      return await self.ai_request(prompt=prompt)
 
+  async def get_appointments_for_front(self, db_session: Session, date:datetime.datetime=None,):
+    # Initialize the query
+    query = db_session.query(Appointment)
+
+    # Apply date filter if provided
+    if date:
+        query = query.filter(cast(Appointment.datetime, Date) == date.date())
+
+    # Sort appointments by datetime
+    appointments = query.order_by(Appointment.datetime).all()
+
+    # Transform appointments into the desired format
+    appointments_to_return = []
+    for appointment in appointments:
+        appointment_data = AppointmentReturn(
+            id=appointment.id,
+            client_name=appointment.client_name,
+            appointment_date=appointment.datetime.strftime("%Y-%m-%d"),
+            appointment_time_start=appointment.datetime.strftime("%H:%M"),
+            appointment_time_end=(appointment.datetime + datetime.timedelta(minutes=30)).strftime("%H:%M"),
+            barber_id=appointment.barber_id,
+            barber_name=appointment.barber.name,
+            phone_number=appointment.phone_number
+        )
+        appointments_to_return.append(appointment_data)
+
+    return appointments_to_return
 
       
